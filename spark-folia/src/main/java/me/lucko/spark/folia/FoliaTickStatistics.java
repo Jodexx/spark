@@ -20,15 +20,19 @@
 
 package me.lucko.spark.folia;
 
-import ca.spottedleaf.moonrise.common.time.TickData;
-import ca.spottedleaf.moonrise.common.time.TickData.SegmentedAverage;
+import ca.spottedleaf.common.time.TickData;
+import ca.spottedleaf.common.time.TickData.SegmentedAverage;
 import io.papermc.paper.threadedregions.ThreadedRegionizer;
 import io.papermc.paper.threadedregions.ThreadedRegionizer.ThreadedRegion;
 import io.papermc.paper.threadedregions.TickRegions.TickRegionData;
 import io.papermc.paper.threadedregions.TickRegions.TickRegionSectionData;
 import me.lucko.spark.api.statistic.StatisticWindow;
 import me.lucko.spark.api.statistic.misc.DoubleAverageInfo;
+import me.lucko.spark.common.metric.Metrics;
+import me.lucko.spark.common.monitor.MonitoringExecutor;
 import me.lucko.spark.common.monitor.tick.TickStatistics;
+import me.lucko.spark.common.util.ImmutableDoubleAverageInfo;
+import me.lucko.spark.common.util.TimeUtil;
 import org.bukkit.Server;
 import org.bukkit.World;
 import org.bukkit.craftbukkit.CraftWorld;
@@ -37,14 +41,34 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 public class FoliaTickStatistics implements TickStatistics {
+    private final Metrics metrics;
     private final Supplier<List<ThreadedRegion<TickRegionData, TickRegionSectionData>>> regionSupplier;
+    private final ScheduledFuture<?> metricsTask;
 
-    public FoliaTickStatistics(Server server) {
+    public FoliaTickStatistics(Metrics metrics, Server server) {
+        this.metrics = metrics;
         this.regionSupplier = new WeakReferenceExpiringSupplier<>(() -> getRegions(server), 5, TimeUnit.MILLISECONDS);
+
+        // collect metrics every 15 seconds - although the Metrics class expects recordings every 10 seconds,
+        // folia only provides 15-second averages (despite the naming below, it's fudged later on).
+        // This is fine, as the metrics are only used for graphing and not for any calculations.
+        this.metricsTask = MonitoringExecutor.scheduleAtFixedRateMillis(this::collectMetrics, 15_000);
+    }
+
+    public void collectMetrics() {
+        long time = TimeUtil.monotonicCurrentTimeMillis();
+        this.metrics.tps().record(time, tps10Sec());
+        this.metrics.tickDuration().record(time, new ImmutableDoubleAverageInfo(duration10Sec()));
+    }
+
+    @Override
+    public void close() {
+        this.metricsTask.cancel(false);
     }
 
     @Override
@@ -139,11 +163,12 @@ public class FoliaTickStatistics implements TickStatistics {
     }
 
     private record SegmentedDoubleAverageInfo(List<SegmentedAverage> averages) implements DoubleAverageInfo {
+        private static final double NANOS_PER_MILLI = 1.0E6;
 
         @Override
         public double mean() {
             return this.averages.stream()
-                    .mapToDouble(avg -> avg.segmentAll().average() / 1.0E6)
+                    .mapToDouble(avg -> avg.segmentAll().average() / NANOS_PER_MILLI)
                     .average()
                     .orElse(0);
         }
@@ -151,7 +176,7 @@ public class FoliaTickStatistics implements TickStatistics {
         @Override
         public double max() {
             return this.averages.stream()
-                    .mapToDouble(avg -> avg.segmentAll().greatest() / 1.0E6)
+                    .mapToDouble(avg -> avg.segmentAll().greatest() / NANOS_PER_MILLI)
                     .max()
                     .orElse(0);
         }
@@ -159,7 +184,7 @@ public class FoliaTickStatistics implements TickStatistics {
         @Override
         public double min() {
             return this.averages.stream()
-                    .mapToDouble(avg -> avg.segmentAll().least() / 1.0E6)
+                    .mapToDouble(avg -> avg.segmentAll().least() / NANOS_PER_MILLI)
                     .min()
                     .orElse(0);
         }
@@ -169,13 +194,13 @@ public class FoliaTickStatistics implements TickStatistics {
             if (percentile == 0.50d) {
                 // median
                 return this.averages.stream()
-                        .mapToDouble(avg -> avg.segmentAll().median() / 1.0E6)
+                        .mapToDouble(avg -> avg.segmentAll().median() / NANOS_PER_MILLI)
                         .average()
                         .orElse(0);
             } else if (percentile == 0.95d) {
                 // 95th percentile
                 return this.averages.stream()
-                        .mapToDouble(avg -> avg.segment5PercentWorst().average() / 1.0E6)
+                        .mapToDouble(avg -> avg.segment5PercentWorst().average() / NANOS_PER_MILLI)
                         .average()
                         .orElse(0);
             }

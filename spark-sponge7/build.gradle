@@ -1,6 +1,5 @@
 plugins {
-    id 'net.kyori.blossom' version '1.3.0'
-    id 'com.gradleup.shadow' version '8.3.0'
+    id 'com.gradleup.shadow' version '8.3.8'
 }
 
 dependencies {
@@ -13,14 +12,8 @@ repositories {
     maven { url "https://repo.spongepowered.org/maven" }
 }
 
-blossom {
-    replaceTokenIn('src/main/java/me/lucko/spark/sponge/Sponge7SparkPlugin.java')
-    replaceToken '@version@', project.pluginVersion
-    replaceToken '@desc@', project.pluginDescription
-}
-
 shadowJar {
-    archiveFileName = "spark-${project.pluginVersion}-sponge7.jar"
+    archiveFileName = "spark-${project.baseVersion}-build${project.extraVersion}-sponge7.jar"
 
     relocate 'net.kyori.adventure', 'me.lucko.spark.lib.adventure'
     relocate 'net.kyori.examination', 'me.lucko.spark.lib.adventure.examination'

@@ -1,9 +1,7 @@
 plugins {
-//    id 'org.cadixdev.licenser' version '0.6.1' apply false
+//    id 'dev.yumi.gradle.licenser' version '2.2.2' apply false
+    id 'io.papermc.paperweight.userdev' version '2.0.0-beta.21' apply false
 }
-
-import org.gradle.api.tasks.testing.logging.TestExceptionFormat
-import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 allprojects {
     group = 'dev.lu15'
@@ -14,12 +12,12 @@ subprojects {
     apply plugin: 'java'
     apply plugin: 'idea'
     apply plugin: 'java-library'
-    // doesn't work in Gradle 9
-//    apply plugin: 'org.cadixdev.licenser'
+//    apply plugin: 'dev.yumi.gradle.licenser'
 
     ext {
-        baseVersion = '1.10.165'
+        baseVersion = '1.10.186'
         pluginVersion = baseVersion + '-SNAPSHOT'
+        extraVersion = determineExtraVersion()
         pluginDescription = 'spark is a performance profiling plugin/mod for Minecraft clients, servers and proxies.'
 
         applyExcludes = { Jar jarTask ->
@@ -43,23 +41,12 @@ subprojects {
         options.release = 8
     }
 
-    tasks.withType(Test).configureEach {
-        testLogging {
-            events = [TestLogEvent.PASSED, TestLogEvent.FAILED, TestLogEvent.SKIPPED]
-            exceptionFormat = TestExceptionFormat.FULL
-            showExceptions = true
-            showCauses = true
-            showStackTraces = true
-        }
-    }
-
     processResources {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
     }
 
 //    license {
-//        header = rootProject.file('HEADER.txt')
-//        include '**/*.java'
+//        rule(rootProject.file("HEADER.txt"))
 //    }
 
     repositories {
@@ -68,4 +55,10 @@ subprojects {
         maven { url "https://jitpack.io" }
         // mavenLocal()
     }
+}
+
+def determineExtraVersion() {
+    return providers.exec {
+        commandLine 'git', 'rev-list', '--count', 'HEAD'
+    }.standardOutput.asText.get().trim()
 }

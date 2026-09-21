@@ -1,14 +1,15 @@
 plugins {
-    id 'com.gradleup.shadow' version '8.3.0'
+    id 'com.gradleup.shadow' version '8.3.8'
 }
 
-tasks.withType(JavaCompile) {
+tasks.withType(JavaCompile).configureEach {
     // override, compile targeting J11
     options.release = 11
 }
 
 dependencies {
     implementation "me.lucko:spark-common:${project.baseVersion}-SNAPSHOT"
+    implementation 'com.google.guava:guava:19.0'
     compileOnly('dev.waterdog.waterdogpe:waterdog:1.2.3') {
         exclude group: 'com.nukkitx.protocol'
     }
@@ -31,8 +32,14 @@ processResources {
 }
 
 shadowJar {
-    archiveFileName = "spark-${project.pluginVersion}-waterdog.jar"
+    archiveFileName = "spark-${project.baseVersion}-build${project.extraVersion}-waterdog.jar"
 
+    dependencies {
+        exclude(dependency('org.checkerframework:checker-qual'))
+        exclude(dependency('com.google.code.findbugs:jsr305'))
+    }
+
+    relocate 'com.google.common', 'me.lucko.spark.lib.guava'
     relocate 'net.kyori.adventure', 'me.lucko.spark.lib.adventure'
     relocate 'net.kyori.examination', 'me.lucko.spark.lib.adventure.examination'
     relocate 'net.kyori.option', 'me.lucko.spark.lib.adventure.option'
