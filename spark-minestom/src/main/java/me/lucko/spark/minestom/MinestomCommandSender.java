@@ -22,7 +22,6 @@ package me.lucko.spark.minestom;
 
 import java.util.function.BiPredicate;
 import me.lucko.spark.common.command.sender.AbstractCommandSender;
-import net.kyori.adventure.permission.PermissionChecker;
 import net.kyori.adventure.text.Component;
 import net.minestom.server.command.CommandSender;
 import net.minestom.server.command.ConsoleSender;
