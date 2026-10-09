@@ -12,11 +12,12 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 dependencies {
-    var minestom = "net.minestom:minestom:2026.01.08-1.21.11"
+    var minestom = "net.minestom:minestom:2026.10.07-26.2"
 
     api "me.lucko:spark-common:${project.baseVersion}-SNAPSHOT"
 
     compileOnly minestom
+    implementation "ch.qos.logback:logback-classic:1.5.28"
     implementation "com.google.guava:guava:33.3.1-jre"
 
     testImplementation minestom
